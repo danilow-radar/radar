@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ПВО ЦФО — РАДИОЛОКАЦИОННЫЙ ПОСТ «ВЫСОТА»</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0f0a;color:#00ff41;font-family:monospace;overflow-x:hidden;min-height:100vh}
+.alarm-mode{background:#1a0000;color:#ff3333!important}
+.alarm-mode *{color:#ff3333!important}
+.alarm-mode .radar-sweep{background:radial-gradient(0deg,transparent 0,rgba(255,51,51,.15) 40%,rgba(255,51,51,.4) 90%,#ff3333 100%)!important}
+
+/* TOP ADMIN BAR */
+#topAdminBar{position:fixed;top:0;left:0;right:0;z-index:999;background:#1a1a00;border:2px solid #ffcc00;padding:8px 12px;display:flex;align-items:center;gap:10px;justify-content:center}
+#topAdminBar button{background:#ffcc00;color:#000;border:none;padding:8px 20px;font-family:monospace;font-weight:bold;font-size:14px;cursor:pointer;border-radius:4px}
+#topAdminBar button:hover{background:#fff000}
+#topAdminBar .status{color:#ffcc00;font-size:12px}
+
+/* LOGIN OVERLAY */
+#loginOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.95);z-index:1000;display:none;align-items:center;justify-content:center}
+#loginOverlay.show{display:flex}
+#loginOverlay .box{background:#0a0f0a;border:2px solid #00ff41;padding:30px;border-radius:8px;text-align:center;max-width:350px;width:90%}
+#loginOverlay .box h2{color:#00ff41;margin-bottom:15px;font-size:18px}
+#loginOverlay .box input{background:#001500;border:2px solid #00ff41;color:#00ff41;font-size:24px;text-align:center;padding:12px;width:200px;letter-spacing:8px;border-radius:4px;outline:none}
+#loginOverlay .box input:focus{border-color:#00ff55}
+#loginOverlay .box button{margin-top:15px;background:#00ff41;color:#000;border:none;padding:10px 40px;font-family:monospace;font-weight:bold;font-size:16px;cursor:pointer;border-radius:4px}
+#loginOverlay .box button:hover{background:#00ff55}
+#loginOverlay .box .hint{margin-top:10px;color:#555;font-size:12px}
+#loginOverlay .box .close{margin-top:10px;background:none;border:1px solid #333;color:#666;padding:5px 15px;cursor:pointer;border-radius:4px;font-family:monospace}
+
+/* ADMIN PANEL */
+#adminPanel{position:fixed;top:42px;left:0;right:0;z-index:998;background:#1a1a00;border-bottom:2px solid #ffcc00;padding:10px;display:none;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center}
+#adminPanel.show{display:flex}
+#adminPanel button{background:#333;color:#ffcc00;border:1px solid #ffcc00;padding:6px 14px;font-family:monospace;font-size:12px;cursor:pointer;border-radius:3px}
+#adminPanel button:hover{background:#444}
+#adminPanel input{background:#000;border:1px solid #ffcc00;color:#ffcc00;padding:6px 10px;font-family:monospace;font-size:12px;border-radius:3px;outline:none;width:200px}
+#adminPanel .label{color:#ffcc00;font-size:12px;font-weight:bold}
+
+.container{max-width:900px;margin:0 auto;padding:50px 12px 20px}
+.header{text-align:center;margin-bottom:15px}
+.header h1{font-size:18px;letter-spacing:2px;text-shadow:0 0 10px #00ff41}
+.header .sub{font-size:12px;color:#555;margin-top:4px}
+
+.clock-bar{display:flex;justify-content:space-between;align-items:center;background:#001500;border:1px solid #003300;padding:8px 12px;margin-bottom:12px;border-radius:4px;font-size:13px;flex-wrap:wrap;gap:6px}
+.clock-bar .time{color:#00ff41;font-size:16px;font-weight:bold}
+.clock-bar .pos{color:#888}
+
+.countdown{text-align:center;background:#001a00;border:2px solid #004400;padding:15px;margin-bottom:12px;border-radius:6px}
+.countdown .label{font-size:12px;color:#555;margin-bottom:5px}
+.countdown .timer{font-size:36px;font-weight:bold;letter-spacing:4px}
+.countdown.urgent{border-color:#ff3333;animation:pulse 1s infinite}
+.countdown.urgent .timer{color:#ff3333}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+.info-box{background:#001500;border:1px solid #003300;padding:12px;margin-bottom:12px;border-radius:4px}
+.info-box h3{font-size:13px;color:#00aa41;margin-bottom:8px;border-bottom:1px solid #003300;padding-bottom:4px}
+.info-box .line{font-size:12px;margin:4px 0;color:#aaa}
+.info-box .line .val{color:#00ff41}
+.info-box .warn{color:#ffcc00}
+.info-box .danger{color:#ff3333}
+
+.vectors{font-size:11px;line-height:1.8}
+.vectors .vec{padding:4px 0;border-bottom:1px dotted #003300}
+.vectors .arrow{color:#00aa41}
+
+.drones{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.drones .drone-btn{background:#001a00;border:1px solid #004400;padding:6px 12px;font-family:monospace;font-size:11px;cursor:pointer;border-radius:3px;color:#00aa41}
+.drones .drone-btn:hover{background:#002a00;border-color:#00ff41}
+.drones .drone-btn:active{background:#003300}
+
+.drone-info{background:#000;border:1px solid #004400;padding:10px;margin:6px 0;border-radius:4px;font-size:11px;display:none}
+.drone-info.show{display:block}
+.drone-info .name{color:#00ff41;font-weight:bold;margin-bottom:4px}
+.drone-info .desc{color:#888;margin-bottom:4px}
+.drone-info .egg{color:#ffcc00;font-style:italic}
+
+.targets{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.targets .target-btn{background:#001a00;border:1px solid #004400;padding:6px 14px;font-family:monospace;font-size:12px;cursor:pointer;border-radius:3px;color:#00aa41}
+.targets .target-btn:hover{background:#002a00;border-color:#00ff41}
+.targets .target-btn:active{background:#003300}
+
+.target-info{background:#000;border:1px solid #004400;padding:10px;margin:6px 0;border-radius:4px;font-size:12px;display:none}
+.target-info.show{display:block}
+.target-info .name{color:#00ff41;font-weight:bold;margin-bottom:4px}
+
+/* RADAR */
+.radar-section{display:flex;justify-content:center;margin:15px 0}
+.radar-wrap{position:relative;width:280px;height:280px}
+.radar-bg{width:280px;height:280px;border:2px solid #00ff41;border-radius:50%;position:relative;background:radial-gradient(circle,#001a00 0,#000a00 100%);overflow:hidden}
+.radar-ring{position:absolute;border:1px solid #003a00;border-radius:50%}
+.radar-ring.r1{width:70px;height:70px;top:105px;left:105px}
+.radar-ring.r2{width:140px;height:140px;top:70px;left:70px}
+.radar-ring.r3{width:210px;height:210px;top:35px;left:35px}
+.radar-cross{position:absolute;background:#003a00}
+.radar-cross.h{width:280px;height:1px;top:140px;left:0}
+.radar-cross.v{width:1px;height:280px;top:0;left:140px}
+.radar-sweep{position:absolute;width:140px;height:140px;top:0;left:140px;transform-origin:left center;background:linear-gradient(90deg,transparent 0,rgba(0,255,65,.05) 60%,rgba(0,255,65,.3) 90%,rgba(0,255,65,.6) 100%);animation:sweep 4s linear infinite}
+@keyframes sweep{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.radar-dot{position:absolute;width:8px;height:8px;border-radius:50%;cursor:pointer;z-index:5;transform:translate(-50%,-50%)}
+.radar-dot.target{background:#ff3333;box-shadow:0 0 8px #ff3333}
+.radar-dot.source{background:#ffcc00;box-shadow:0 0 8px #ffcc00}
+.radar-dot:hover{transform:translate(-50%,-50%) scale(1.5)}
+.radar-dot:active{transform:translate(-50%,-50%) scale(2)}
+.radar-dot .tip{display:none;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:#000;border:1px solid #00ff41;padding:4px 8px;font-size:10px;white-space:nowrap;border-radius:3px;z-index:10}
+.radar-dot:hover .tip{display:block}
+.radar-label{position:absolute;font-size:9px;color:#555;pointer-events:none}
+
+.pvo-bar{margin:4px 0;font-size:11px}
+.pvo-bar .name{display:inline-block;width:100px;color:#00aa41}
+.pvo-bar .bar{display:inline-block;width:120px;height:10px;background:#003300;border-radius:2px;vertical-align:middle}
+.pvo-bar .fill{height:100%;background:#00ff41;border-radius:2px}
+
+.channels{font-size:11px;line-height:1.8}
+.channels .ch{padding:2px 0}
+.channels .ch .ok{color:#00ff41}
+.channels .ch .warn{color:#ffcc00}
+.channels .ch .bad{color:#ff3333}
+
+.civilian{background:#1a1a00;border:1px solid #ffcc00;padding:12px;margin:12px 0;border-radius:4px;font-size:12px;line-height:1.6}
+.civilian h3{color:#ffcc00;margin-bottom:6px;font-size:13px}
+.civilian .item{padding:3px 0}
+.civilian .icon{color:#ffcc00}
+
+.journal{background:#000;border:1px solid #003300;padding:12px;margin:12px 0;border-radius:4px;max-height:400px;overflow-y:auto;font-size:11px}
+.journal h3{color:#00aa41;margin-bottom:8px;border-bottom:1px solid #003300;padding-bottom:4px;font-size:13px}
+.journal .entry{padding:3px 0;border-bottom:1px dotted #001a00;line-height:1.5}
+.journal .entry .ts{color:#555}
+.journal .entry .msg{color:#aaa}
+.journal .entry.alert .msg{color:#ffcc00}
+.journal .entry.danger .msg{color:#ff3333}
+.journal .entry.easter .msg{color:#ff00ff}
+
+.controls-row{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.controls-row button{background:#001a00;border:1px solid #004400;padding:6px 14px;font-family:monospace;font-size:11px;cursor:pointer;border-radius:3px;color:#00aa41}
+.controls-row button:hover{background:#002a00;border-color:#00ff41}
+.controls-row button.danger{border-color:#ff3333;color:#ff3333}
+.controls-row button.danger:hover{background:#1a0000}
+.controls-row button.warn{border-color:#ffcc00;color:#ffcc00}
+.controls-row button.warn:hover{background:#1a1a00}
+
+.popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#000;border:2px solid #00ff41;padding:20px;border-radius:8px;z-index:500;display:none;text-align:center;max-width:300px}
+.popup.show{display:block}
+.popup h3{color:#00ff41;margin-bottom:10px}
+.popup p{color:#aaa;font-size:12px;margin-bottom:10px}
+.popup button{background:#00ff41;color:#000;border:none;padding:8px 20px;cursor:pointer;border-radius:4px;font-family:monospace}
+
+#secretClicks{position:fixed;bottom:5px;left:5px;width:30px;height:30px;opacity:0;cursor:pointer;z-index:100}
+@media(max-width:600px){
+.container{padding:50px 6px 10px}
+.header h1{font-size:14px}
+.countdown .timer{font-size:28px}
+.radar-wrap{width:240px;height:240px}
+.radar-bg{width:240px;height:240px}
+.radar-sweep{width:120px;height:120px;left:120px}
+.radar-cross.h{width:240px;top:120px}
+.radar-cross.v{height:240px;left:120px}
+.radar-ring.r1{width:60px;height:60px;top:90px;left:90px}
+.radar-ring.r2{width:120px;height:120px;top:60px;left:60px}
+.radar-ring.r3{width:180px;height:180px;top:30px;left:30px}
+#adminPanel input{width:140px}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP ADMIN BAR -->
+<div id="topAdminBar">
+<button onclick="showLogin()">🔐 АДМИН — ВОЙТИ</button>
+<span class="status" id="adminStatus">Вы: гость</span>
+</div>
+
+<!-- LOGIN OVERLAY -->
+<div id="loginOverlay">
+<div class="box">
+<h2>🔐 ВХОД В СИСТЕМУ</h2>
+<input type="password" id="passInput" maxlength="4" placeholder="••••" onkeypress="if(event.key==='Enter')doLogin()">
+<br>
+<button onclick="doLogin()">ВОЙТИ</button>
+<br>
+<button class="close" onclick="closeLogin()">ОТМЕНА</button>
+<div class="hint">Код из 4 цифр</div>
+</div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel">
+<span class="label">⚡ АДМИН-ПАНЕЛЬ:</span>
+<input id="adminMsg" placeholder="Текст в журнал..." onkeypress="if(event.key==='Enter')sendAdminMsg()">
+<button onclick="sendAdminMsg()">📝 ОТПРАВИТЬ</button>
+<button onclick="setThreat('green')">🟢 СПОКОЙНО</button>
+<button onclick="setThreat('yellow')">🟡 УГРОЗА</button>
+<button onclick="setThreat('red')">🔴 КРИТИЧНО</button>
+<button onclick="triggerAlarm()">🚨 ТРЕВОГА</button>
+<button onclick="stopAlarm()">✅ ОТБОЙ</button>
+<button onclick="quickMsg('🚀 ЗАПУСК! ГОТОВЬТЕСЬ К НОЧАМ!')">🚀 ЗАПУСК</button>
+<button onclick="quickMsg('🟢 ОТБОЙ ТРЕВОГИ')">✅ ОТБОЙ</button>
+<button onclick="quickMsg('🎯 ПЕРЕХВАТ: Тула — 3 БПЛА «Лютый»')">🎯 ТУЛА</button>
+<button onclick="quickMsg('🎯 ПЕРЕХВАТ: Калуга — 2 БПЛА «Бобёр»')">🎯 КАЛУГА</button>
+<button onclick="quickMsg('🎯 ПЕРЕХВАТ: Орёл — 1 БПЛА FP-1')">🎯 ОРЁЛ</button>
+<button onclick="quickMsg('🎯 ПЕРЕХВАТ: Рязань — 4 БПЛА')">🎯 РЯЗАНЬ</button>
+<button onclick="quickMsg('🎯 ПЕРЕХВАТ: Москва — 5 БПЛА, ПВО РАБОТАЕТ')">🎯 МОСКВА</button>
+<button onclick="adminLogout()">🚪 ВЫЙТИ</button>
+</div>
+
+<!-- POPUP -->
+<div class="popup" id="popup">
+<h3 id="popupTitle"></h3>
+<p id="popupText"></p>
+<button onclick="closePopup()">ЗАКРЫТЬ</button>
+</div>
+
+<!-- SECRET CLICK ZONE -->
+<div id="secretClicks" onclick="secretClick()"></div>
+
+<div class="container">
+
+<!-- HEADER -->
+<div class="header">
+<h1>☠️ ПВО ЦФО — РАДИОЛОКАЦИОННЫЙ ПОСТ «ВЫСОТА» ☠️</h1>
+<div class="sub">КОМБАТ-1 «ГРОМ» · Позиция: Киреевск, Тульская обл. · 5 октября 2026, ПН</div>
+</div>
+
+<!-- CLOCK -->
+<div class="clock-bar">
+<span class="time" id="liveClock">19:43:11</span>
+<span class="pos">📍 Киреевск, Тульская обл.</span>
+<span style="color:#555;font-size:11px" id="dateLine">05.10.2026 · ПН · МСК</span>
+</div>
+
+<!-- COUNTDOWN -->
+<div class="countdown" id="countdownBox">
+<div class="label">⏰ ДО НАЧАЛА ОПЕРАЦИИ (22:00 МСК)</div>
+<div class="timer" id="countdown">02:16:49</div>
+</div>
+
+<!-- FORECAST -->
+<div class="info-box">
+<h3>📋 ПРОГНОЗ ОБСТАНОВКИ — НОЧЬ 5→6 ОКТЯБРЯ</h3>
+<div class="line">БПЛА: <span class="danger">~600 единиц</span> · массированная атака</div>
+<div class="line">Ракетные обстрелы: <span class="danger">высокая опасность</span></div>
+<div class="line">Цели противника: <span class="warn">НПЗ · подстанции · склады</span></div>
+<div class="line">Дроны: «Лютый», «Бобёр», FP-1, «Морок», «Майя»</div>
+</div>
+
+<!-- VECTORS -->
+<div class="info-box">
+<h3>▶️ ВЕКТОРЫ ПРОРЫВА — ЦФО</h3>
+<div class="vectors">
+<div class="vec"><span class="arrow">▶️</span> Брянская обл. → Калужская обл. → глубокий тыл</div>
+<div class="vec"><span class="arrow">▶️</span> Курская обл. → Орловская обл. → тыловые районы</div>
+<div class="vec"><span class="arrow">▶️</span> Белгородская обл. → Воронеж / Липецк → тыл</div>
+<div class="vec"><span class="arrow">▶️</span> ЛДНР → Воронеж / Липецк → Тула</div>
+</div>
+</div>
+
+<!-- DRONES -->
+<div class="info-box">
+<h3>🛸 ТИПЫ БПЛА ПРОТИВНИКА — нажми для инфы</h3>
+<div class="drones">
+<button class="drone-btn" onclick="toggleDrone('lyutyy')">«Лютый»</button>
+<button class="drone-btn" onclick="toggleDrone('bobr')">«Бобёр»</button>
+<button class="drone-btn" onclick="toggleDrone('fp1')">FP-1</button>
+<button class="drone-btn" onclick="toggleDrone('morok')">«Морок»</button>
+<button class="drone-btn" onclick="toggleDrone('maya')">«Майя»</button>
+</div>
+<div class="drone-info" id="drone-lyutyy">
+<div class="name">Ан-196 «Лютый»</div>
+<div class="desc">Дальний ударный БПЛА · БЧ 50 кг · Дальность 1500 км</div>
+<div class="egg">⚠️ «ЭТА ТВАРЬ ОПЯТЬ ЗДЕСЬ»</div>
+</div>
+<div class="drone-info" id="drone-bobr">
+<div class="name">UJ-26 «Бобёр»</div>
+<div class="desc">Серийный БПЛА-камикадзе · Дальность 800 км</div>
+<div class="egg">⚠️ «Бобёр плывёт. Но не тот, которого ждали.»</div>
+</div>
+<div class="drone-info" id="drone-fp1">
+<div class="name">FP-1 (FirePoint-1)</div>
+<div class="desc">Дрон-камикадзе · Дальность до 3400 км</div>
+<div class="egg">⚠️ «Летит далеко. Очень далеко. Слишком далеко.»</div>
+</div>
+<div class="drone-info" id="drone-morok">
+<div class="name">«Морок»</div>
+<div class="desc">БПЛА-помех · РЭБ-платформа · Ослепляет радары</div>
+<div class="egg">⚠️ «Морок наводит морок. Радар моргает.»</div>
+</div>
+<div class="drone-info" id="drone-maya">
+<div class="name">«Майя»</div>
+<div class="desc">БПЛА-целеуказатель · Ведёт стаю дронов</div>
+<div class="egg">⚠️ «Майя ведёт стаю. Без маячки дроны слепые.»</div>
+</div>
+</div>
+
+<!-- TARGETS -->
+<div class="info-box">
+<h3>🎯 ЦЕЛИ ЦФО — нажми для инфы</h3>
+<div class="targets">
+<button class="target-btn" onclick="toggleTarget('tula')">Тула</button>
+<button class="target-btn" onclick="toggleTarget('kaluga')">Калуга</button>
+<button class="target-btn" onclick="toggleTarget('orel')">Орёл</button>
+<button class="target-btn" onclick="toggleTarget('ryazan')">Рязань</button>
+<button class="target-btn" onclick="toggleTarget('moscow')">Москва</button>
+</div>
+<div class="target-info" id="target-tula">
+<div class="name">Тула</div>
+<div class="desc">Дистанция: 40 км · Направление: С · Угроза: ВЫСОКАЯ</div>
+<div class="desc">НПЗ, подстанция, склады боеприпасов</div>
+</div>
+<div class="target-info" id="target-kaluga">
+<div class="name">Калуга</div>
+<div class="desc">Дистанция: 120 км · Направление: СЗ · Угроза: ВЫСОКАЯ</div>
+<div class="desc">НПЗ, энергетическая инфраструктура</div>
+</div>
+<div class="target-info" id="target-orel">
+<div class="name">Орёл</div>
+<div class="desc">Дистанция: 220 км · Направление: ЮЗ · Угроза: СРЕДНЯЯ</div>
+<div class="desc">Склады, подстанции</div>
+</div>
+<div class="target-info" id="target-ryazan">
+<div class="name">Рязань</div>
+<div class="desc">Дистанция: 160 км · Направление: В · Угроза: СРЕДНЯЯ</div>
+<div class="desc">НПЗ, энергетика</div>
+</div>
+<div class="target-info" id="target-moscow">
+<div class="name">Москва</div>
+<div class="desc">Дистанция: 180 км · Направление: С · Угроза: КРИТИЧЕСКАЯ</div>
+<div class="desc">НПЗ, подстанции, склады, правительственные объекты</div>
+</div>
+</div>
+
+<!-- RADAR -->
+<div class="radar-section">
+<div class="radar-wrap">
+<div class="radar-bg">
+<div class="radar-ring r1"></div>
+<div class="radar-ring r2"></div>
+<div class="radar-ring r3"></div>
+<div class="radar-cross h"></div>
+<div class="radar-cross v"></div>
+<div class="radar-sweep"></div>
+<!-- targets -->
+<div class="radar-dot target" style="top:110px;left:130px" onclick="showDotInfo('Тула','40 км · Север · ВЫСОКАЯ')"><span class="tip">Тула 40км</span></div>
+<div class="radar-dot target" style="top:90px;left:80px" onclick="showDotInfo('Калуга','120 км · СЗ · ВЫСОКАЯ')"><span class="tip">Калуга 120км</span></div>
+<div class="radar-dot target" style="top:170px;left:60px" onclick="showDotInfo('Орёл','220 км · ЮЗ · СРЕДНЯЯ')"><span class="tip">Орёл 220км</span></div>
+<div class="radar-dot target" style="top:160px;left:200px" onclick="showDotInfo('Рязань','160 км · В · СРЕДНЯЯ')"><span class="tip">Рязань 160км</span></div>
+<div class="radar-dot target" style="top:70px;left:160px" onclick="showDotInfo('Москва','180 км · С · КРИТИЧНАЯ')"><span class="tip">Москва 180км</span></div>
+<!-- sources -->
+<div class="radar-dot source" style="top:210px;left:100px" onclick="showDotInfo('Чернигов','Источник · ЮЗ')"><span class="tip">Чернигов</span></div>
+<div class="radar-dot source" style="top:200px;left:160px" onclick="showDotInfo('Сумы','Источник · Ю')"><span class="tip">Сумы</span></div>
+</div>
+</div>
+</div>
+
+<!-- PVO -->
+<div class="info-box">
+<h3>🛡️ ГОТОВНОСТЬ СИСТЕМ ПВО ЦФО</h3>
+<div class="pvo-bar"><span class="name">С-400</span><span class="bar"><span class="fill" style="width:95%"></span></span> 95%</div>
+<div class="pvo-bar"><span class="name">Панцирь-С1</span><span class="bar"><span class="fill" style="width:88%"></span></span> 88%</div>
+<div class="pvo-bar"><span class="name">Бук-М3</span><span class="bar"><span class="fill" style="width:90%"></span></span> 90%</div>
+<div class="pvo-bar"><span class="name">Тор-М2</span><span class="bar"><span class="fill" style="width:92%"></span></span> 92%</div>
+<div class="pvo-bar"><span class="name">С-300В</span><span class="bar"><span class="fill" style="width:85%"></span></span> 85%</div>
+<div class="pvo-bar"><span class="name">Небо-М</span><span class="bar"><span class="fill" style="width:97%"></span></span> 97%</div>
+<div class="pvo-bar"><span class="name">Красуха-4</span><span class="bar"><span class="fill" style="width:80%"></span></span> 80%</div>
+<div class="pvo-bar"><span class="name">Левер-АВ</span><span class="bar"><span class="fill" style="width:78%"></span></span> 78%</div>
+</div>
+
+<!-- CHANNELS -->
+<div class="info-box">
+<h3>📡 КАНАЛЫ СВЯЗИ</h3>
+<div class="channels">
+<div class="ch"><span class="ok">●</span> Канал-1 «Заря» — СВЯЗЬ СТАБИЛЬНАЯ</div>
+<div class="ch"><span class="ok">●</span> Канал-2 «Волна» — СВЯЗЬ СТАБИЛЬНАЯ</div>
+<div class="ch"><span class="warn">●</span> Канал-3 «Гроза» — ПОМЕХИ РЭБ</div>
+<div class="ch"><span class="ok">●</span> Канал-4 «Шторм» — СВЯЗЬ СТАБИЛЬНАЯ</div>
+<div class="ch"><span class="warn">●</span> Канал-5 «Маяк» — СЛАБЫЙ СИГНАЛ</div>
+</div>
+</div>
+
+<!-- CONDITIONS -->
+<div class="info-box">
+<h3>🌡️ УСЛОВИЯ В ЗОНЕ ОТВЕТСТВЕННОСТИ</h3>
+<div class="line">Ветер: 5 м/с, ЮЗ · Видимость: 8 км</div>
+<div class="line">Облачность: 70% · Т°: +3°C</div>
+<div class="line">Атм. давление: 745 мм · Влажность: 82%</div>
+<div class="line">Радиофон: <span class="warn">умеренные помехи</span></div>
+</div>
+
+<!-- CIVILIAN -->
+<div class="civilian">
+<h3>🚨 ГРАЖДАНСКОЕ ПРЕДУПРЕЖДЕНИЕ</h3>
+<div class="item"><span class="icon">📱</span> Зарядите мобильные телефоны</div>
+<div class="item"><span class="icon">💡</span> Будьте готовы к отключению электричества</div>
+<div class="item"><span class="icon">🏠</span> Заранее подготовьте безопасное укрытие</div>
+<div class="item"><span class="icon">🎒</span> Держите под рукой необходимые вещи</div>
+<div class="item"><span class="icon">⚠️</span> Относитесь к сигналам воздушной тревоги со всей серьёзностью</div>
+<div class="item"><span class="icon">❤️</span> Ваша жизнь и здоровье — абсолютный приоритет</div>
+</div>
+
+<!-- JOURNAL -->
+<div class="journal" id="journal">
+<h3>📝 ЖУРНАЛ ОПЕРАЦИЙ</h3>
+<div id="journalEntries"></div>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls-row">
+<button onclick="addRandomEntry()">+ ЗАПИСЬ</button>
+<button class="warn" onclick="triggerAlarm()">🚨 ТРЕВОГА</button>
+<button class="danger" onclick="stopAlarm()">✅ ОТБОЙ</button>
+<button onclick="showPopup('Пасхалка','Найди скрытую зону в левом нижнем углу!')">???</button>
+</div>
+
+</div>
+
+<script>
+// ===== LIVE CLOCK =====
+function updateClock(){
+const now=new Date();
+const h=String(now.getHours()).padStart(2,'0');
+const m=String(now.getMinutes()).padStart(2,'0');
+const s=String(now.getSeconds()).padStart(2,'0');
+document.getElementById('liveClock').textContent=h+':'+m+':'+s;
+updateCountdown();
+}
+setInterval(updateClock,1000);
+
+// ===== COUNTDOWN =====
+function updateCountdown(){
+const now=new Date();
+const target=new Date();
+target.setHours(22,0,0,0);
+if(now>target)target.setDate(target.getDate()+1);
+const diff=Math.floor((target-now)/1000);
+const h=Math.floor(diff/3600);
+const m=Math.floor((diff%3600)/60);
+const s=diff%60;
+const txt=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+document.getElementById('countdown').textContent=txt;
+if(diff<=600){
+document.getElementById('countdownBox').classList.add('urgent');
+}
+if(diff<=0){
+document.getElementById('countdownBox').classList.remove('urgent');
+document.body.classList.add('alarm-mode');
+if(!window._launched){
+window._launched=true;
+addJournalEntry('22:00:00','🚀 ЗАПУСК! ГОТОВЬТЕСЬ К НОЧАМ!','danger');
+}
+}
+}
+
+// ===== JOURNAL =====
+var journalData=[
+['18:50:00','Радар ЦФО — калибровка завершена. Сектор 045-270 активен.',''],
+['18:55:00','Комбат-1 «Гром» на позиции. Связь со штабом ЦФО — стабильно.',''],
+['19:00:00','Обнаружено движение в секторе ЮЗ. Классификация: БПЛА «Лютый».','alert'],
+['19:05:00','Перехват: Тула — 1 БПЛА «Лютый» уничтожен. С-400 работает.',''],
+['19:10:00','Вектор: Чернигов → Калуга. Дистанция 340 км. Скорость 140 км/ч.','alert'],
+['19:15:00','Вектор: Сумы → Орёл. Дистанция 280 км. Класс: FP-1.','alert'],
+['19:20:00','Канал-3 «Гроза» — помехи РЭБ. Переключение на резерв.',''],
+['19:25:00','Перехват: Калуга — 2 БПЛА «Бобёр». Панцирь-С1 — успешно.',''],
+['19:30:00','Обнаружен «Морок» в секторе 180. РЭБ-платформа. Радар моргает.','alert'],
+['19:35:00','ЛЮТЫЙ — ЭТО ТВАРЬ. ОБСУЖДЕНИЮ НЕ ПОДЛЕЖИТ.','easter'],
+['19:40:00','«Майя» ведёт стаю. 8 целей в секторе Ю. Без маячки дроны слепые.','alert'],
+['19:43:00','Комбат-1: Прогноз подтверждён. ~600 единиц. Готовность максимальная.','alert'],
+['20:00:00','Вторая волна. Сектора Ю и ЮЗ. Классификация: «Лютый» х3, FP-1 х2.','alert'],
+['20:10:00','Бобёр плывёт. Но не тот, которого ждали.','easter'],
+['20:30:00','Перехват: Москва — 5 БПЛА. ПВО работает. С-400 + Панцирь.',''],
+['21:00:00','Третья волна. Всё чаще. Всё ближе.','alert'],
+['21:30:00','Морок наводит морок. Радар моргает. Канал-5 слабеет.','alert'],
+['21:47:00','Бобёр плывёт. Но не тот, которого ждали.','easter'],
+['21:55:00','Готовность 100%. Все системы — в боеготовности.','alert'],
+['22:00:00','🚀 ЗАПУСК! ГОТОВЬТЕСЬ К НОЧАМ!','danger'],
+['22:15:00','Перехват: Тула — 3 БПЛА «Лютый». ЭТА ТВАРЬ ОПЯТЬ ЗДЕСЬ.','danger'],
+['22:30:00','Перехват: Калуга — 2 БПЛА «Бобёр». Панцирь — чисто.','danger'],
+['22:45:00','Перехват: Орёл — 1 FP-1. Камикадзе нейтрализован.','danger'],
+['22:50:00','🟢 ОТБОЙ ТРЕВОГИ. Зона чиста. Все цели перехвачены.',''],
+['03:33:00','КОМБАТ-1: ЛЮТЫЙ — ЭТО ТВАРЬ. ОБСУЖДЕНИЮ НЕ ПОДЛЕЖИТ.','easter'],
+];
+
+function renderJournal(){
+var html='';
+journalData.forEach(function(e){
+var cls=e[2]?' '+e[2]:'';
+html+='<div class="entry'+cls+'"><span class="ts">['+e[0]+']</span> <span class="msg">'+e[1]+'</span></div>';
+});
+document.getElementById('journalEntries').innerHTML=html;
+var j=document.getElementById('journal');
+j.scrollTop=j.scrollHeight;
+}
+renderJournal();
+
+function addJournalEntry(ts,msg,type){
+journalData.push([ts,msg,type||'']);
+renderJournal();
+// sync via ntfy
+try{
+fetch('https://ntfy.sh/kombat-radar-cfo',{method:'POST',body:'['+ts+'] '+msg}).catch(function(){});
+}catch(e){}
+}
+
+function addRandomEntry(){
+var now=new Date();
+var ts=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+var msgs=[
+'Сектор сканирован. Чисто.',
+'Канал-2: подтвердил готовность.',
+'ПВО: дежурный режим.',
+'Радар: обзор 360°. Цели не обнаружены.',
+'Боеготовность: 100%.',
+];
+var msg=msgs[Math.floor(Math.random()*msgs.length)];
+addJournalEntry(ts,msg,'');
+}
+
+// ===== DRONES =====
+function toggleDrone(id){
+var el=document.getElementById('drone-'+id);
+document.querySelectorAll('.drone-info').forEach(function(e){if(e!==el)e.classList.remove('show')});
+el.classList.toggle('show');
+}
+
+// ===== TARGETS =====
+function toggleTarget(id){
+var el=document.getElementById('target-'+id);
+document.querySelectorAll('.target-info').forEach(function(e){if(e!==el)e.classList.remove('show')});
+el.classList.toggle('show');
+}
+
+// ===== RADAR DOTS =====
+function showDotInfo(name,info){
+showPopup(name,info);
+}
+
+// ===== ALARM =====
+function triggerAlarm(){
+document.body.classList.add('alarm-mode');
+var now=new Date();
+var ts=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+addJournalEntry(ts,'🚨 ТРЕВОГА! Все системы — боевой режим!','danger');
+}
+function stopAlarm(){
+document.body.classList.remove('alarm-mode');
+var now=new Date();
+var ts=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+addJournalEntry(ts,'🟢 ОТБОЙ ТРЕВОГИ. Зона под контролем.','');
+}
+
+// ===== POPUP =====
+function showPopup(title,text){
+document.getElementById('popupTitle').textContent=title;
+document.getElementById('popupText').textContent=text;
+document.getElementById('popup').classList.add('show');
+}
+function closePopup(){
+document.getElementById('popup').classList.remove('show');
+}
+
+// ===== SECRET =====
+var secretCount=0;
+function secretClick(){
+secretCount++;
+if(secretCount>=3){
+secretCount=0;
+showPopup('☠️ КОМБАТ-1 «ГРОМ»','«ЛЮТЫЙ — ЭТО ТВАРЬ. И Я ЗНАЮ, ЧТО ДЕЛАТЬ С ТАКАМИ ТВАРЯМИ. ОБСУЖДЕНИЮ НЕ ПОДЛЕЖИТ.» — Гром');
+}
+}
+
+// ===== LOGIN =====
+function showLogin(){
+document.getElementById('loginOverlay').classList.add('show');
+document.getElementById('passInput').value='';
+setTimeout(function(){document.getElementById('passInput').focus();},100);
+}
+function closeLogin(){
+document.getElementById('loginOverlay').classList.remove('show');
+}
+function doLogin(){
+var code=document.getElementById('passInput').value;
+if(code==='2247'){
+document.getElementById('loginOverlay').classList.remove('show');
+document.getElementById('adminPanel').classList.add('show');
+document.getElementById('adminStatus').textContent='Вы: АДМИН ⚡';
+document.getElementById('adminStatus').style.color='#00ff41';
+}else{
+var box=document.getElementById('loginOverlay').querySelector('.box');
+box.style.borderColor='#ff3333';
+document.getElementById('passInput').style.borderColor='#ff3333';
+setTimeout(function(){
+box.style.borderColor='#00ff41';
+document.getElementById('passInput').style.borderColor='#00ff41';
+},500);
+}
+}
+
+function adminLogout(){
+document.getElementById('adminPanel').classList.remove('show');
+document.getElementById('adminStatus').textContent='Вы: гость';
+document.getElementById('adminStatus').style.color='#ffcc00';
+}
+
+function sendAdminMsg(){
+var msg=document.getElementById('adminMsg').value;
+if(!msg)return;
+var now=new Date();
+var ts=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+addJournalEntry(ts,'⚡ АДМИН: '+msg,'alert');
+document.getElementById('adminMsg').value='';
+}
+
+function quickMsg(msg){
+var now=new Date();
+var ts=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+var type = msg.includes('ОТБОЙ')?'':(msg.includes('ЗАПУСК')?'danger':'alert');
+addJournalEntry(ts,msg,type);
+}
+
+function setThreat(level){
+var colors={green:'🟢 Уровень: СПОКОЙНО',yellow:'🟡 Уровень: УГРОЗА',red:'🔴 Уровень: КРИТИЧНО'};
+var now=new Date();
+var ts=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+addJournalEntry(ts,colors[level],'alert');
+}
+
+// ===== LIVE SYNC (ntfy.sh) =====
+var evtSource;
+function startSync(){
+try{
+evtSource=new EventSource('https://ntfy.sh/kombat-radar-cfo/sse');
+evtSource.onmessage=function(event){
+try{
+var data=JSON.parse(event.data);
+if(data.message){
+var match=data.message.match(/^\[(\d{2}:\d{2}:\d{2})\]\s(.+)/);
+if(match){
+// check if already exists
+var exists=journalData.some(function(e){return e[0]===match[1]&&e[1]===match[2]});
+if(!exists){
+journalData.push([match[1],match[2],'alert']);
+renderJournal();
+}
+}
+}
+}catch(e){}
+};
+}catch(e){}
+}
+startSync();
+</script>
+</body>
+</html>
